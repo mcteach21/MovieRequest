@@ -11,4 +11,6 @@
     <color name="primaryTextColor">#ffffff</color>
 
     <color name="primaryBlueDark">#000a12</color>
+
+    <color name="dialogButtonText">#008577</color>
 </resources>

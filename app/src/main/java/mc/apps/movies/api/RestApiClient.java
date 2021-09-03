@@ -1,4 +1,4 @@
-package mc.apps.movies.tools;
+package mc.apps.movies.api;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -9,7 +9,9 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class RestApiClient {
     //https://image.tmdb.org/t/p/w500/8yhWlFcJ8zCqjfCvLy3lWFuawR1.jpg
 
-    private static final String BASE_URL = "https://api.themoviedb.org/3/discover/";
+    private static final String BASE_URL = "https://api.themoviedb.org/3/";//discover/";
+    //private static final String BASE_URL_SEARCH = "https://api.themoviedb.org/3/search/";
+
     private static final String TAG = "retrofit";
     public static RestApiInterface getInstance() {
         Gson gson = new GsonBuilder()

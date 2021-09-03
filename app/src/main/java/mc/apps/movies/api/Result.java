@@ -1,4 +1,4 @@
-package mc.apps.movies.tools;
+package mc.apps.movies.api;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -9,6 +9,11 @@ public class Result {
     public String page;
     @SerializedName("results")
     public List<Movie> movies;
+
+    @SerializedName("total_pages")
+    public int pages;
+    @SerializedName("total_results")
+    public int total;
 
     @Override
     public String toString() {

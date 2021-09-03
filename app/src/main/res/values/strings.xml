@@ -1,8 +1,9 @@
 <resources>
     <string name="app_name">MovieRequest</string>
 
-    <string name="btn_http_client_text">Rest API Call (TheMovieDB)</string>
+    <string name="btn_http_client_text">TheMovieDB (Rest API)</string>
     <string name="app_title">(Retrofit) Api Rest Client</string>
+    <string name="search_filter_txt"><![CDATA[Search & Filter..]]></string>
 
     <!--    <string name="first_fragment_label">First Fragment</string>-->
     <!--    <string name="second_fragment_label">Second Fragment</string>-->
@@ -11,4 +12,11 @@
 
     <!--    <string name="hello_first_fragment">Hello first fragment</string>-->
     <!--    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>-->
+
+    <integer-array name="years">
+        <item>2021</item>
+        <item>2020</item>
+        <item>2019</item>
+        <item>2018</item>
+    </integer-array>
 </resources>

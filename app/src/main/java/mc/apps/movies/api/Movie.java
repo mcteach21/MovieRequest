@@ -1,4 +1,4 @@
-package mc.apps.movies.tools;
+package mc.apps.movies.api;
 
 import com.google.gson.annotations.SerializedName;
 

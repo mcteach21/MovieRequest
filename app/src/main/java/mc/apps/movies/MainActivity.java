@@ -6,9 +6,9 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -20,27 +20,40 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.LayoutAnimationController;
 import android.view.animation.ScaleAnimation;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
-import mc.apps.movies.tools.Movie;
-import mc.apps.movies.tools.RestApiClient;
-import mc.apps.movies.tools.RestApiInterface;
-import mc.apps.movies.tools.Result;
+import mc.apps.movies.api.Movie;
+import mc.apps.movies.api.RestApiClient;
+import mc.apps.movies.api.RestApiInterface;
+import mc.apps.movies.api.Result;
+import mc.apps.movies.tools.Animate;
+import mc.apps.movies.tools.Dialogs;
+import mc.apps.movies.tools.Ui;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import androidx.appcompat.app.AlertDialog;
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "retrofit";
     private MyCustomAdapter adapter;
+    private TextView txtInfo;
+
+    int thisYear = Calendar.getInstance().get(Calendar.YEAR);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,32 +61,72 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        //getSupportActionBar().setDisplayShowTitleEnabled(false);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         Button btnStart = findViewById(R.id.btnStartHttpClient);
-        btnStart.setOnClickListener(v-> startApiCall());
+        btnStart.setOnClickListener(v-> startApiCall(thisYear,"", false)); //
 
         handleRecyclerview();
+        txtInfo = findViewById(R.id.txtInfo);
+
+        ImageView filter = findViewById(R.id.imgFilter);
+        Animate.rotateView(filter,1500,true);
+        filter.setOnClickListener(v-> startFilterDialog());
+   }
+
+    private void startFilterDialog() {
+        Dialogs.showCustomDialog(this,R.layout.filter_layout,"","Apply","",
+                (dialog, witch)->applyFilyter(dialog),
+                dialogInterface -> populateSpinner(dialogInterface));
     }
 
-    private void startApiCall() {
+    private void populateSpinner(DialogInterface dialog) {
+        AlertDialog view = ((AlertDialog) dialog);
+        Spinner spinYear = view.findViewById(R.id.spinYear);
 
+        ArrayList<String> years = new ArrayList<String>();
+        //years.add("----");
+        for (int i = thisYear; i >=2010 ; i--)
+            years.add(Integer.toString(i));
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, years);
+        spinYear.setAdapter(adapter);
+
+        Button button = view.getButton(AlertDialog.BUTTON_POSITIVE);
+        button.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_action_apply_filter, 0, 0, 0);
+        Ui.centerImageAndTextInButton(button);
+    }
+    private void applyFilyter(DialogInterface dialog) {
+        AlertDialog view = ((AlertDialog) dialog);
+
+        EditText edtKeyword = view.findViewById(R.id.edtKeyword);
+        Spinner spinYear = view.findViewById(R.id.spinYear);
+        Switch swcAdult = view.findViewById(R.id.swcAdult);
+
+        //Toast.makeText(this, "keyword = "+edtKeyword.getEditableText().toString()+" "+, Toast.LENGTH_SHORT).show();
+
+        int year = Integer.parseInt((String) spinYear.getSelectedItem());
+        startApiCall(year, edtKeyword.getEditableText().toString(), swcAdult.isChecked() );
+    }
+    private void startApiCall(int year, String keyword, boolean adult) {
         RestApiInterface apiInterface = RestApiClient.getInstance();
-        Call<Result> call = apiInterface.list(); //&year=2021
+
+        Call<Result> call = keyword.isEmpty()?apiInterface.list(year):apiInterface.filter(year , keyword, adult);
         call.enqueue(new Callback<Result>() {
 
             @Override
             public void onResponse(Call<Result> call, Response<Result> response) {
                 Log.i(TAG , "***************************************");
                 Result result = response.body();
+
+                txtInfo.setText(result.total+" results | page "+result.page+" sur "+result.pages);
+
                 Log.i(TAG , "Response : "+result);
                 Log.i(TAG , "***************************************");
 
                 adapter.reset();
                 List<Movie> movies = result.movies;
                 if(response.isSuccessful()) {
-
                     movies.forEach(movie -> Log.i(TAG , String.valueOf(movie)));
                     movies.forEach(movie -> adapter.add(movie));
                 } else {

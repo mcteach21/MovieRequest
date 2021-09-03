@@ -24,7 +24,7 @@ import com.google.firebase.ml.naturallanguage.translate.FirebaseTranslator;
 import com.google.firebase.ml.naturallanguage.translate.FirebaseTranslatorOptions;
 import com.squareup.picasso.Picasso;
 
-import mc.apps.movies.tools.Movie;
+import mc.apps.movies.api.Movie;
 
 public class MovieActivity extends AppCompatActivity {
     TextView desc;
