@@ -58,10 +58,11 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
+        android:enabled="false"
         android:text="@string/btn_http_client_text"
         app:layout_constraintEnd_toStartOf="@+id/imgFilter"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/appBarLayout" />
+        app:layout_constraintTop_toBottomOf="@+id/txtWarning" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list"
@@ -83,7 +84,7 @@
         android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/appBarLayout"
+        app:layout_constraintTop_toBottomOf="@+id/txtWarning"
         app:srcCompat="@drawable/ic_action_filter" />
 
     <TextView
@@ -101,5 +102,24 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/imgFilter" />
+
+    <TextView
+        android:id="@+id/txtWarning"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:fontFamily="casual"
+        android:gravity="center"
+        android:padding="10dp"
+        android:text="@string/api_warning_txt"
+        android:textColor="@color/primaryLightColor"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="visible"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/appBarLayout" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

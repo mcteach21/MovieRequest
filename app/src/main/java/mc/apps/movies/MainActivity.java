@@ -3,11 +3,13 @@ package mc.apps.movies;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -54,6 +56,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView txtInfo;
 
     int thisYear = Calendar.getInstance().get(Calendar.YEAR);
+    SharedPreferences sharedPreferences;
+    String moviesAPIKey;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,8 +67,31 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if(checkSettings())
+            init();
+    }
+
+    private boolean checkSettings() {
+        //check api keys
+        moviesAPIKey = sharedPreferences.getString("edt_pref_movies_apikey","");
+        String firebaseAPIKey = sharedPreferences.getString("edt_pref_firebase_apikey","");
+        return !moviesAPIKey.isEmpty() && !firebaseAPIKey.isEmpty();
+    }
+
+    private void init() {
+        TextView warning = findViewById(R.id.txtWarning);
+        warning.setVisibility(View.GONE);
+
         Button btnStart = findViewById(R.id.btnStartHttpClient);
-        btnStart.setOnClickListener(v-> startApiCall(thisYear,"", false)); //
+
+        Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
+        btnStart.setOnClickListener(v-> startApiCall(thisYear,"", allowAdult)); //
+        btnStart.setEnabled(true);
 
         handleRecyclerview();
         txtInfo = findViewById(R.id.txtInfo);
@@ -72,11 +99,11 @@ public class MainActivity extends AppCompatActivity {
         ImageView filter = findViewById(R.id.imgFilter);
         Animate.rotateView(filter,1500,true);
         filter.setOnClickListener(v-> startFilterDialog());
-   }
+    }
 
     private void startFilterDialog() {
         Dialogs.showCustomDialog(this,R.layout.filter_layout,"","Apply","",
-                (dialog, witch)->applyFilyter(dialog),
+                (dialog, witch) -> applyFilyter(dialog),
                 dialogInterface -> populateSpinner(dialogInterface));
     }
 
@@ -99,38 +126,41 @@ public class MainActivity extends AppCompatActivity {
     private void applyFilyter(DialogInterface dialog) {
         AlertDialog view = ((AlertDialog) dialog);
 
-        EditText edtKeyword = view.findViewById(R.id.edtKeyword);
+        EditText edtKeyword = view.findViewById(R.id.edtMoviesApiKey);
         Spinner spinYear = view.findViewById(R.id.spinYear);
-        Switch swcAdult = view.findViewById(R.id.swcAdult);
 
-        //Toast.makeText(this, "keyword = "+edtKeyword.getEditableText().toString()+" "+, Toast.LENGTH_SHORT).show();
+        Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
 
         int year = Integer.parseInt((String) spinYear.getSelectedItem());
-        startApiCall(year, edtKeyword.getEditableText().toString(), swcAdult.isChecked() );
+        startApiCall(year, edtKeyword.getEditableText().toString(), allowAdult );
     }
     private void startApiCall(int year, String keyword, boolean adult) {
         RestApiInterface apiInterface = RestApiClient.getInstance();
 
-        Call<Result> call = keyword.isEmpty()?apiInterface.list(year):apiInterface.filter(year , keyword, adult);
+
+        Call<Result> call = keyword.isEmpty()?apiInterface.list(moviesAPIKey, year):apiInterface.filter(moviesAPIKey, year , keyword, adult);
         call.enqueue(new Callback<Result>() {
 
             @Override
             public void onResponse(Call<Result> call, Response<Result> response) {
-                Log.i(TAG , "***************************************");
+
                 Result result = response.body();
+                if(result!=null) {
+                    Log.i(TAG, "***************************************");
+                    txtInfo.setText(result.total + " results | page " + result.page + " sur " + result.pages);
+                    Log.i(TAG, "Response : " + result);
+                    Log.i(TAG, "***************************************");
 
-                txtInfo.setText(result.total+" results | page "+result.page+" sur "+result.pages);
-
-                Log.i(TAG , "Response : "+result);
-                Log.i(TAG , "***************************************");
-
-                adapter.reset();
-                List<Movie> movies = result.movies;
-                if(response.isSuccessful()) {
-                    movies.forEach(movie -> Log.i(TAG , String.valueOf(movie)));
-                    movies.forEach(movie -> adapter.add(movie));
-                } else {
-                    Log.i(TAG , String.valueOf(response.errorBody()));
+                    adapter.reset();
+                    List<Movie> movies = result.movies;
+                    if (response.isSuccessful()) {
+                        movies.forEach(movie -> Log.i(TAG, String.valueOf(movie)));
+                        movies.forEach(movie -> adapter.add(movie));
+                    } else {
+                        Log.i(TAG, String.valueOf(response.errorBody()));
+                    }
+                }else{
+                    Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
                 }
             }
 
@@ -150,7 +180,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
             case R.id.settings:
-                Toast.makeText(this, "Nothing implemented yet! :)", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(this, SettingsActivity.class));
                 break;
             default:
                 finish();
@@ -158,10 +188,6 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-
-    /**
-     * List
-     */
     private void handleRecyclerview() {
         RecyclerView recyclerview = findViewById(R.id.list);
         ListItemClickListener item_listener = (id) -> {
@@ -182,7 +208,6 @@ public class MainActivity extends AppCompatActivity {
                 R.anim.layout_animation_fall_down);
         recyclerview.setLayoutAnimation(animation);
     }
-
     interface ListItemClickListener {
         void onClick(int position);
     }
