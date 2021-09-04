@@ -75,7 +75,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/txtInfo" />
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
 
     <ImageView
         android:id="@+id/imgFilter"
@@ -92,16 +92,15 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="8dp"
         android:fontFamily="casual"
         android:textColor="@color/primaryTextColor"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintEnd_toStartOf="@+id/linearLayout"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imgFilter" />
+        app:layout_constraintTop_toBottomOf="@+id/btnStartHttpClient" />
 
     <TextView
         android:id="@+id/txtWarning"
@@ -121,5 +120,42 @@
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/appBarLayout" />
+
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imgFilter">
+
+        <Button
+            android:id="@+id/button"
+            android:layout_width="57dp"
+            android:layout_height="35dp"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:padding="0dp"
+            android:text="Prev." />
+
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="27dp"
+            android:layout_height="35dp"
+            android:layout_margin="5dp"
+            android:layout_weight="2"
+            android:padding="0dp"
+            android:text="1" />
+
+        <Button
+            android:id="@+id/button4"
+            android:layout_width="51dp"
+            android:layout_height="34dp"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:padding="0dp"
+            android:text="Next" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -72,9 +72,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if(checkSettings())
+        if(checkSettings()) {
             init();
+            if(lastCall[0]!=null)
+                startApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]));
+        }
+
     }
+
+    private String[] lastCall= new String[3];
 
     private boolean checkSettings() {
         //check api keys
@@ -82,7 +88,6 @@ public class MainActivity extends AppCompatActivity {
         String firebaseAPIKey = sharedPreferences.getString("edt_pref_firebase_apikey","");
         return !moviesAPIKey.isEmpty() && !firebaseAPIKey.isEmpty();
     }
-
     private void init() {
         TextView warning = findViewById(R.id.txtWarning);
         warning.setVisibility(View.GONE);
@@ -100,13 +105,11 @@ public class MainActivity extends AppCompatActivity {
         Animate.rotateView(filter,1500,true);
         filter.setOnClickListener(v-> startFilterDialog());
     }
-
     private void startFilterDialog() {
         Dialogs.showCustomDialog(this,R.layout.filter_layout,"","Apply","",
                 (dialog, witch) -> applyFilyter(dialog),
                 dialogInterface -> populateSpinner(dialogInterface));
     }
-
     private void populateSpinner(DialogInterface dialog) {
         AlertDialog view = ((AlertDialog) dialog);
         Spinner spinYear = view.findViewById(R.id.spinYear);
@@ -132,11 +135,13 @@ public class MainActivity extends AppCompatActivity {
         Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
 
         int year = Integer.parseInt((String) spinYear.getSelectedItem());
+
         startApiCall(year, edtKeyword.getEditableText().toString(), allowAdult );
     }
     private void startApiCall(int year, String keyword, boolean adult) {
         RestApiInterface apiInterface = RestApiClient.getInstance();
 
+        lastCall = new String[]{String.valueOf(year), keyword, String.valueOf(adult)};
 
         Call<Result> call = keyword.isEmpty()?apiInterface.list(moviesAPIKey, year):apiInterface.filter(moviesAPIKey, year , keyword, adult);
         call.enqueue(new Callback<Result>() {
@@ -170,12 +175,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.settings, menu);
         return true;
     }
-
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
@@ -187,7 +192,6 @@ public class MainActivity extends AppCompatActivity {
         }
         return true;
     }
-
     private void handleRecyclerview() {
         RecyclerView recyclerview = findViewById(R.id.list);
         ListItemClickListener item_listener = (id) -> {
