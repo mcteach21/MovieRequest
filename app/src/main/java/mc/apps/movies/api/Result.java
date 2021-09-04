@@ -6,7 +6,7 @@ import java.util.List;
 
 public class Result {
     @SerializedName("page")
-    public String page;
+    public int page;
     @SerializedName("results")
     public List<Movie> movies;
 

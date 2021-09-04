@@ -59,6 +59,9 @@ public class MainActivity extends AppCompatActivity {
     SharedPreferences sharedPreferences;
     String moviesAPIKey;
 
+    Button btnPrev, btnNext;
+    int currentPage=1, totalPages=0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
         if(checkSettings()) {
             init();
             if(lastCall[0]!=null)
-                startApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]));
+                startApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage);
         }
 
     }
@@ -95,16 +98,32 @@ public class MainActivity extends AppCompatActivity {
         Button btnStart = findViewById(R.id.btnStartHttpClient);
 
         Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
-        btnStart.setOnClickListener(v-> startApiCall(thisYear,"", allowAdult)); //
+        btnStart.setOnClickListener(v-> startApiCall(thisYear,"", allowAdult, currentPage)); //
         btnStart.setEnabled(true);
 
         handleRecyclerview();
+
+        btnPrev = findViewById(R.id.btnPrev);
+        btnNext = findViewById(R.id.btnNext);
+
+        btnPrev.setOnClickListener(v->managePage(-1));
+        btnNext.setOnClickListener(v->managePage(1));
         txtInfo = findViewById(R.id.txtInfo);
+
 
         ImageView filter = findViewById(R.id.imgFilter);
         Animate.rotateView(filter,1500,true);
         filter.setOnClickListener(v-> startFilterDialog());
     }
+
+    private void managePage(int i) {
+        int num = currentPage+i;
+        currentPage = (num>totalPages || num==0)?1:num;
+
+        //if(lastCall[0]!=null)
+        startApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage);
+    }
+
     private void startFilterDialog() {
         Dialogs.showCustomDialog(this,R.layout.filter_layout,"","Apply","",
                 (dialog, witch) -> applyFilyter(dialog),
@@ -136,25 +155,32 @@ public class MainActivity extends AppCompatActivity {
 
         int year = Integer.parseInt((String) spinYear.getSelectedItem());
 
-        startApiCall(year, edtKeyword.getEditableText().toString(), allowAdult );
+        startApiCall(year, edtKeyword.getEditableText().toString(), allowAdult, currentPage);
     }
-    private void startApiCall(int year, String keyword, boolean adult) {
+    private void startApiCall(int year, String keyword, boolean adult, int page) {
+        currentPage=1;
+        totalPages=0;
         RestApiInterface apiInterface = RestApiClient.getInstance();
 
         lastCall = new String[]{String.valueOf(year), keyword, String.valueOf(adult)};
 
-        Call<Result> call = keyword.isEmpty()?apiInterface.list(moviesAPIKey, year):apiInterface.filter(moviesAPIKey, year , keyword, adult);
+        Call<Result> call = keyword.isEmpty()?apiInterface.list(moviesAPIKey, year, page):apiInterface.filter(moviesAPIKey, year , keyword, adult, page);
         call.enqueue(new Callback<Result>() {
 
             @Override
             public void onResponse(Call<Result> call, Response<Result> response) {
 
+
                 Result result = response.body();
                 if(result!=null) {
                     Log.i(TAG, "***************************************");
-                    txtInfo.setText(result.total + " results | page " + result.page + " sur " + result.pages);
                     Log.i(TAG, "Response : " + result);
                     Log.i(TAG, "***************************************");
+
+                    currentPage = result.page;
+                    totalPages = result.pages;
+
+                    txtInfo.setText("page " + currentPage + " sur " + result.pages+" ["+result.total+"]");
 
                     adapter.reset();
                     List<Movie> movies = result.movies;
@@ -167,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
                 }else{
                     Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
                 }
+                findViewById(R.id.infoLayout).setVisibility(result!=null?View.VISIBLE:View.GONE);
             }
 
             @Override

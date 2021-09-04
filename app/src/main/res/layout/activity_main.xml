@@ -69,13 +69,14 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:paddingTop="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
+        app:layout_constraintTop_toBottomOf="@+id/infoLayout" />
 
     <ImageView
         android:id="@+id/imgFilter"
@@ -86,21 +87,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/txtWarning"
         app:srcCompat="@drawable/ic_action_filter" />
-
-    <TextView
-        android:id="@+id/txtInfo"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="8dp"
-        android:fontFamily="casual"
-        android:textColor="@color/primaryTextColor"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/linearLayout"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btnStartHttpClient" />
 
     <TextView
         android:id="@+id/txtWarning"
@@ -122,16 +108,19 @@
         app:layout_constraintTop_toBottomOf="@+id/appBarLayout" />
 
     <LinearLayout
-        android:id="@+id/linearLayout"
-        android:layout_width="200dp"
+        android:id="@+id/infoLayout"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:orientation="horizontal"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/imgFilter">
 
         <Button
-            android:id="@+id/button"
+            android:id="@+id/btnPrev"
             android:layout_width="57dp"
             android:layout_height="35dp"
             android:layout_margin="5dp"
@@ -139,17 +128,19 @@
             android:padding="0dp"
             android:text="Prev." />
 
-        <Button
-            android:id="@+id/button2"
-            android:layout_width="27dp"
-            android:layout_height="35dp"
-            android:layout_margin="5dp"
-            android:layout_weight="2"
-            android:padding="0dp"
-            android:text="1" />
+        <TextView
+            android:id="@+id/txtInfo"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="casual"
+            android:padding="2dp"
+            android:textColor="@color/primaryTextColor"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
         <Button
-            android:id="@+id/button4"
+            android:id="@+id/btnNext"
             android:layout_width="51dp"
             android:layout_height="34dp"
             android:layout_margin="5dp"
