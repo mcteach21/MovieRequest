@@ -2,6 +2,7 @@ package mc.apps.movies;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatAutoCompleteTextView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -26,8 +27,6 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Spinner;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import mc.apps.movies.api.GenresManager;
 import mc.apps.movies.api.Movie;
 import mc.apps.movies.api.RestApiClient;
 import mc.apps.movies.api.RestApiInterface;
@@ -52,8 +52,11 @@ import androidx.appcompat.app.AlertDialog;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "retrofit";
+    private static final String MOVIES_SORT_BY = "primary_release_date.desc";
     private MyCustomAdapter adapter;
     private TextView txtInfo;
+
+    RestApiInterface apiInterface;
 
     int thisYear = Calendar.getInstance().get(Calendar.YEAR);
     SharedPreferences sharedPreferences;
@@ -71,6 +74,8 @@ public class MainActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+
+        apiInterface = RestApiClient.getInstance();
     }
     @Override
     protected void onResume() {
@@ -78,12 +83,12 @@ public class MainActivity extends AppCompatActivity {
         if(checkSettings()) {
             init();
             if(lastCall[0]!=null)
-                startApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage);
+                MoviesApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage, Integer.parseInt(lastCall[3]));
         }
 
     }
 
-    private String[] lastCall= new String[3];
+    private String[] lastCall= new String[4];
 
     private boolean checkSettings() {
         //check api keys
@@ -98,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnStart = findViewById(R.id.btnStartHttpClient);
 
         Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
-        btnStart.setOnClickListener(v-> startApiCall(thisYear,"", allowAdult, currentPage)); //
+        btnStart.setOnClickListener(v-> MoviesApiCall(thisYear,"", allowAdult, currentPage,0)); //
         btnStart.setEnabled(true);
 
         handleRecyclerview();
@@ -121,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
         currentPage = (num>totalPages || num==0)?1:num;
 
         //if(lastCall[0]!=null)
-        startApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage);
+        MoviesApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage, Integer.parseInt(lastCall[3]));
     }
 
     private void startFilterDialog() {
@@ -131,11 +136,14 @@ public class MainActivity extends AppCompatActivity {
     }
     private void populateSpinner(DialogInterface dialog) {
         AlertDialog view = ((AlertDialog) dialog);
-        Spinner spinYear = view.findViewById(R.id.spinYear);
+        AppCompatAutoCompleteTextView spinYear = view.findViewById(R.id.yearsAutoComplete);
+
+        AppCompatAutoCompleteTextView spinGenre = view.findViewById(R.id.genresAutoComplete);
+        GenresManager.Populate(MainActivity.this, apiInterface, moviesAPIKey, spinGenre);
 
         ArrayList<String> years = new ArrayList<String>();
-        //years.add("----");
-        for (int i = thisYear; i >=2010 ; i--)
+        years.add("---");
+        for (int i = thisYear+1; i >=2000 ; i--)
             years.add(Integer.toString(i));
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, years);
@@ -148,25 +156,41 @@ public class MainActivity extends AppCompatActivity {
     private void applyFilyter(DialogInterface dialog) {
         AlertDialog view = ((AlertDialog) dialog);
 
-        EditText edtKeyword = view.findViewById(R.id.edtMoviesApiKey);
-        Spinner spinYear = view.findViewById(R.id.spinYear);
+        EditText edtKeyword = view.findViewById(R.id.edtKeyword);
+        AppCompatAutoCompleteTextView spinYear = view.findViewById(R.id.yearsAutoComplete);
+        AppCompatAutoCompleteTextView spinGenre = view.findViewById(R.id.genresAutoComplete);
 
         Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
 
-        int year = Integer.parseInt((String) spinYear.getSelectedItem());
+        int genre =0, year=0;
+        try {
+            genre = Integer.parseInt(spinGenre.getText().toString().split(" - ")[0]);
+        }catch(Exception e){}
+        try {
+            year = Integer.parseInt(spinYear.getText().toString());
+        }catch(Exception e){}
 
-        startApiCall(year, edtKeyword.getEditableText().toString(), allowAdult, currentPage);
+
+        Log.i(TAG, "applyFilyter: "+genre+" "+year);
+
+        MoviesApiCall(year, edtKeyword.getEditableText().toString(), allowAdult, currentPage, genre);
     }
-    private void startApiCall(int year, String keyword, boolean adult, int page) {
+    private void MoviesApiCall(int year, String keyword, boolean adult, int page, int genre_id) {
         currentPage=1;
         totalPages=0;
-        RestApiInterface apiInterface = RestApiClient.getInstance();
+        txtInfo.setText("");
+        //RestApiInterface apiInterface = RestApiClient.getInstance();
 
-        lastCall = new String[]{String.valueOf(year), keyword, String.valueOf(adult)};
+        lastCall = new String[]{String.valueOf(year), keyword, String.valueOf(adult), String.valueOf(genre_id)};
 
-        Call<Result> call = keyword.isEmpty()?apiInterface.list(moviesAPIKey, year, page):apiInterface.filter(moviesAPIKey, year , keyword, adult, page);
+        Call<Result> call;
+        if(genre_id>0)
+            call = year==0?apiInterface.byGenre(moviesAPIKey, genre_id, page, MOVIES_SORT_BY):apiInterface.byGenreAndYear(moviesAPIKey, year , genre_id, page, MOVIES_SORT_BY);
+        else
+            call = keyword.isEmpty()?(year==0?apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY):apiInterface.byReleaseYear(moviesAPIKey,year, page, MOVIES_SORT_BY)):
+                    (year==0?apiInterface.byKeyword(moviesAPIKey,keyword, adult, page, MOVIES_SORT_BY):apiInterface.byKeywordAndYear(moviesAPIKey, year , keyword, adult, page, MOVIES_SORT_BY));
+
         call.enqueue(new Callback<Result>() {
-
             @Override
             public void onResponse(Call<Result> call, Response<Result> response) {
 
@@ -175,6 +199,7 @@ public class MainActivity extends AppCompatActivity {
                 if(result!=null) {
                     Log.i(TAG, "***************************************");
                     Log.i(TAG, "Response : " + result);
+                    Log.i(TAG, "GENRE : " + genre_id);
                     Log.i(TAG, "***************************************");
 
                     currentPage = result.page;
@@ -185,8 +210,13 @@ public class MainActivity extends AppCompatActivity {
                     adapter.reset();
                     List<Movie> movies = result.movies;
                     if (response.isSuccessful()) {
-                        movies.forEach(movie -> Log.i(TAG, String.valueOf(movie)));
+                        //movies.forEach(movie -> Log.i(TAG, String.valueOf(movie)));
+
+//                        if(genre_id>0){
+//                            movies = movies.stream().filter(x-> ArrayUtils.contains(x.genre_ids, genre_id)).collect(Collectors.toList());
+//                        }
                         movies.forEach(movie -> adapter.add(movie));
+
                     } else {
                         Log.i(TAG, String.valueOf(response.errorBody()));
                     }
@@ -267,7 +297,7 @@ public class MainActivity extends AppCompatActivity {
             holder.desc.setText(movie.overview);
 
             Picasso.get()
-                    .load("https://image.tmdb.org/t/p/w500"+movie.poster_path)
+                    .load(RestApiInterface.IMAGES_URL+movie.poster_path)
 //                    .resize(80, 80)
 //                    .centerCrop()
                     .into(holder.logo);

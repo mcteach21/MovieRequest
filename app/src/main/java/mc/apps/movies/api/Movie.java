@@ -26,7 +26,10 @@ public class Movie implements Serializable {
     @SerializedName("poster_path")
     public String poster_path;
 
-    //    "genre_ids":[28,12,14,35],
+    @SerializedName("genre_ids")
+    public int[] genre_ids;
+
+    //    "":[28,12,14,35],
     //    "popularity":3692.281,
     //    "video":false,
     //    "vote_average":8,
