@@ -43,6 +43,7 @@ import mc.apps.movies.api.RestApiInterface;
 import mc.apps.movies.api.Result;
 import mc.apps.movies.tools.Animate;
 import mc.apps.movies.tools.Dialogs;
+import mc.apps.movies.tools.ListItemClickListener;
 import mc.apps.movies.tools.Ui;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -53,6 +54,7 @@ import androidx.appcompat.app.AlertDialog;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "retrofit";
     private static final String MOVIES_SORT_BY = "primary_release_date.desc";
+    private static final String MOVIES_ORIGINAL_LANGUAGE = "en-US";
     private MyCustomAdapter adapter;
     private TextView txtInfo;
 
@@ -185,10 +187,10 @@ public class MainActivity extends AppCompatActivity {
 
         Call<Result> call;
         if(genre_id>0)
-            call = year==0?apiInterface.byGenre(moviesAPIKey, genre_id, page, MOVIES_SORT_BY):apiInterface.byGenreAndYear(moviesAPIKey, year , genre_id, page, MOVIES_SORT_BY);
+            call = year==0?apiInterface.byGenre(moviesAPIKey, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE):apiInterface.byGenreAndYear(moviesAPIKey, year , genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
         else
-            call = keyword.isEmpty()?(year==0?apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY):apiInterface.byReleaseYear(moviesAPIKey,year, page, MOVIES_SORT_BY)):
-                    (year==0?apiInterface.byKeyword(moviesAPIKey,keyword, adult, page, MOVIES_SORT_BY):apiInterface.byKeywordAndYear(moviesAPIKey, year , keyword, adult, page, MOVIES_SORT_BY));
+            call = keyword.isEmpty()?(year==0?apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY,MOVIES_ORIGINAL_LANGUAGE):apiInterface.byReleaseYear(moviesAPIKey,year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)):
+                    (year==0?apiInterface.byKeyword(moviesAPIKey,keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE):apiInterface.byKeywordAndYear(moviesAPIKey, year , keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
 
         call.enqueue(new Callback<Result>() {
             @Override
@@ -269,9 +271,7 @@ public class MainActivity extends AppCompatActivity {
                 R.anim.layout_animation_fall_down);
         recyclerview.setLayoutAnimation(animation);
     }
-    interface ListItemClickListener {
-        void onClick(int position);
-    }
+
     private class MyCustomAdapter extends RecyclerView.Adapter<MyCustomAdapter.MyCustomViewHolder> {
         private static final long FADE_DURATION = 2000;
         List<Movie> items = new ArrayList<Movie>();
@@ -295,6 +295,8 @@ public class MainActivity extends AppCompatActivity {
             holder.title.setText(movie.title.equalsIgnoreCase(movie.original_title)?movie.title:movie.title+" ["+movie.original_title+"]");
             holder.subtitle.setText(movie.original_language+" | "+movie.release_date);
             holder.desc.setText(movie.overview);
+
+            Log.i(TAG, movie.overview);
 
             Picasso.get()
                     .load(RestApiInterface.IMAGES_URL+movie.poster_path)

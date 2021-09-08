@@ -40,4 +40,5 @@
     <string name="preferences_allow_adult_txt">Allow Adult Results</string>
     <string name="define_settings_title">API Key(s)</string>
     <string name="api_warning_txt">API Key(s) not found!</string>
+    <string name="btn_casting_txt">Casting..</string>
 </resources>
