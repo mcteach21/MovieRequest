@@ -95,7 +95,7 @@ public class MovieActivity extends AppCompatActivity {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MovieActivity.this);
         String moviesAPIKey = sharedPreferences.getString("edt_pref_movies_apikey","");
         RestApiInterface apiInterface = RestApiClient.getInstance();
-        Call<Credit> call = apiInterface.casting(movie.id, moviesAPIKey);
+        Call<Credit> call = apiInterface.credits(movie.id, moviesAPIKey);
         call.enqueue(new Callback<Credit>() {
             @Override
             public void onResponse(Call<Credit> call, Response<Credit> response) {

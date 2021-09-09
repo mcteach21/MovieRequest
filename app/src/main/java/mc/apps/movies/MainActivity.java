@@ -38,9 +38,11 @@ import java.util.List;
 
 import mc.apps.movies.api.GenresManager;
 import mc.apps.movies.api.Movie;
+import mc.apps.movies.api.Person;
 import mc.apps.movies.api.RestApiClient;
 import mc.apps.movies.api.RestApiInterface;
 import mc.apps.movies.api.Result;
+import mc.apps.movies.api.Result3;
 import mc.apps.movies.tools.Animate;
 import mc.apps.movies.tools.Dialogs;
 import mc.apps.movies.tools.ListItemClickListener;
@@ -54,7 +56,7 @@ import androidx.appcompat.app.AlertDialog;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "retrofit";
     private static final String MOVIES_SORT_BY = "primary_release_date.desc";
-    private static final String MOVIES_ORIGINAL_LANGUAGE = "en-US";
+    private static final String MOVIES_ORIGINAL_LANGUAGE = "fr|en";
     private MyCustomAdapter adapter;
     private TextView txtInfo;
 
@@ -64,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     SharedPreferences sharedPreferences;
     String moviesAPIKey;
 
+    private String[] lastCall= new String[5];
     Button btnPrev, btnNext;
     int currentPage=1, totalPages=0;
 
@@ -76,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
-
         apiInterface = RestApiClient.getInstance();
     }
     @Override
@@ -85,13 +87,11 @@ public class MainActivity extends AppCompatActivity {
         if(checkSettings()) {
             init();
             if(lastCall[0]!=null)
-                MoviesApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage, Integer.parseInt(lastCall[3]));
+                //year,keyword, adult,genre_id, casting
+                MoviesApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage, Integer.parseInt(lastCall[3]), lastCall[4]);
         }
 
     }
-
-    private String[] lastCall= new String[4];
-
     private boolean checkSettings() {
         //check api keys
         moviesAPIKey = sharedPreferences.getString("edt_pref_movies_apikey","");
@@ -105,7 +105,9 @@ public class MainActivity extends AppCompatActivity {
         Button btnStart = findViewById(R.id.btnStartHttpClient);
 
         Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
-        btnStart.setOnClickListener(v-> MoviesApiCall(thisYear,"", allowAdult, currentPage,0)); //
+        btnStart.setOnClickListener(v->
+                        {   resetPaginate(); MoviesApiCall(thisYear,"", allowAdult, 1,0, "");}
+                ); //
         btnStart.setEnabled(true);
 
         handleRecyclerview();
@@ -128,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
         currentPage = (num>totalPages || num==0)?1:num;
 
         //if(lastCall[0]!=null)
-        MoviesApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage, Integer.parseInt(lastCall[3]));
+        MoviesApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage, Integer.parseInt(lastCall[3]), lastCall[4]);
     }
 
     private void startFilterDialog() {
@@ -161,6 +163,7 @@ public class MainActivity extends AppCompatActivity {
         EditText edtKeyword = view.findViewById(R.id.edtKeyword);
         AppCompatAutoCompleteTextView spinYear = view.findViewById(R.id.yearsAutoComplete);
         AppCompatAutoCompleteTextView spinGenre = view.findViewById(R.id.genresAutoComplete);
+        EditText edtCasting = view.findViewById(R.id.edtCasting);
 
         Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
 
@@ -172,67 +175,103 @@ public class MainActivity extends AppCompatActivity {
             year = Integer.parseInt(spinYear.getText().toString());
         }catch(Exception e){}
 
+        resetPaginate();
 
-        Log.i(TAG, "applyFilyter: "+genre+" "+year);
+        String keyword=edtKeyword.getEditableText().toString();
+        String casting=edtCasting.getEditableText().toString().trim().replace(" ","+");
 
-        MoviesApiCall(year, edtKeyword.getEditableText().toString(), allowAdult, currentPage, genre);
+        MoviesApiCall(year, keyword, allowAdult, currentPage, genre, casting);
     }
-    private void MoviesApiCall(int year, String keyword, boolean adult, int page, int genre_id) {
+
+    private void resetPaginate() {
         currentPage=1;
         totalPages=0;
         txtInfo.setText("");
-        //RestApiInterface apiInterface = RestApiClient.getInstance();
+    }
 
-        lastCall = new String[]{String.valueOf(year), keyword, String.valueOf(adult), String.valueOf(genre_id)};
+    private void MoviesApiCall(int year, String keyword, boolean adult, int page, int genre_id, String casting) {
+        saveLastCall(year,keyword, adult, genre_id, casting);
+        if(!"".equals(casting)){
+            Call<Result3> call0 = apiInterface.actor(moviesAPIKey, casting);
+            call0.enqueue(new Callback<Result3>() {
+                @Override
+                public void onResponse(Call<Result3> call0, Response<Result3> response) {
+                    Result3 result = response.body();
+                    if(result!=null) {
+                        List<Person> casting = result.results;
+                        int casting_id = !casting.isEmpty()?casting.get(0).id:0;
 
-        Call<Result> call;
-        if(genre_id>0)
-            call = year==0?apiInterface.byGenre(moviesAPIKey, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE):apiInterface.byGenreAndYear(moviesAPIKey, year , genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
-        else
-            call = keyword.isEmpty()?(year==0?apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY,MOVIES_ORIGINAL_LANGUAGE):apiInterface.byReleaseYear(moviesAPIKey,year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)):
-                    (year==0?apiInterface.byKeyword(moviesAPIKey,keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE):apiInterface.byKeywordAndYear(moviesAPIKey, year , keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
+                        Call<Result> call;
+                        if (genre_id > 0) {
+                            call = year == 0 ?
+                                    apiInterface.byCastingAndGenre(moviesAPIKey, casting_id, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                                    : apiInterface.byCastingAndGenreAndYear(moviesAPIKey, casting_id, year, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+                        }else{
+                            call = year == 0 ?
+                                    apiInterface.byCasting(moviesAPIKey, casting_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                                    : apiInterface.byCastingAndYear(moviesAPIKey, casting_id, year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+                        }
+                        //  call = keyword.isEmpty() ? (year == 0 ? apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byReleaseYear(moviesAPIKey, year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)) :
+                        //  (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
 
+                        callApi(call);
+                    }else{
+                        Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<Result3> call, Throwable t) {
+                    Log.e(TAG , "Error : "+t.getMessage());
+                }
+            });
+        }else {
+            Call<Result> call;
+            if (genre_id > 0)
+                call = year == 0 ? apiInterface.byGenre(moviesAPIKey, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byGenreAndYear(moviesAPIKey, year, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+            else
+                call = keyword.isEmpty() ? (year == 0 ? apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byReleaseYear(moviesAPIKey, year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)) :
+                        (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
+            callApi(call);
+        }
+    }
+
+    private void callApi(Call<Result> call) {
         call.enqueue(new Callback<Result>() {
             @Override
             public void onResponse(Call<Result> call, Response<Result> response) {
-
-
                 Result result = response.body();
-                if(result!=null) {
-                    Log.i(TAG, "***************************************");
-                    Log.i(TAG, "Response : " + result);
-                    Log.i(TAG, "GENRE : " + genre_id);
-                    Log.i(TAG, "***************************************");
-
+                if (result != null) {
                     currentPage = result.page;
                     totalPages = result.pages;
-
-                    txtInfo.setText("page " + currentPage + " sur " + result.pages+" ["+result.total+"]");
+                    txtInfo.setText("page " + currentPage + " sur " + result.pages + " [" + result.total + "]");
 
                     adapter.reset();
                     List<Movie> movies = result.movies;
                     if (response.isSuccessful()) {
-                        //movies.forEach(movie -> Log.i(TAG, String.valueOf(movie)));
-
-//                        if(genre_id>0){
-//                            movies = movies.stream().filter(x-> ArrayUtils.contains(x.genre_ids, genre_id)).collect(Collectors.toList());
-//                        }
                         movies.forEach(movie -> adapter.add(movie));
-
                     } else {
                         Log.i(TAG, String.valueOf(response.errorBody()));
                     }
-                }else{
+                } else {
                     Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
                 }
-                findViewById(R.id.infoLayout).setVisibility(result!=null?View.VISIBLE:View.GONE);
+                findViewById(R.id.infoLayout).setVisibility(result != null ? View.VISIBLE : View.GONE);
             }
 
             @Override
             public void onFailure(Call<Result> call, Throwable t) {
-                Log.e(TAG , t.getMessage());
+                Log.e(TAG, t.getMessage());
             }
         });
+    }
+
+    private void saveLastCall(int year, String keyword, boolean adult, int genre_id, String casting){
+        lastCall[0]= String.valueOf(year);
+        lastCall[1]= keyword;
+        lastCall[2]= String.valueOf(adult);
+        lastCall[3]= String.valueOf(genre_id);
+        lastCall[4]= casting;
     }
 
     @Override
