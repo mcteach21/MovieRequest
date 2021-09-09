@@ -37,6 +37,7 @@ public class Dialogs {
 
         dialog.setOnShowListener(onShowListener);
 
+        //dialog.getWindow().getAttributes().windowAnimations = R.style.PauseDialogAnimation;
         dialog.show();
     }
 

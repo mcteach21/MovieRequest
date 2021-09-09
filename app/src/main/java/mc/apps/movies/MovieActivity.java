@@ -4,12 +4,18 @@ import static android.graphics.text.LineBreaker.JUSTIFICATION_MODE_INTER_WORD;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatAutoCompleteTextView;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -39,14 +45,17 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import mc.apps.movies.api.Actor;
+import mc.apps.movies.api.Biography;
 import mc.apps.movies.api.Casting;
 import mc.apps.movies.api.Credit;
 import mc.apps.movies.api.Crew;
 import mc.apps.movies.api.Movie;
 import mc.apps.movies.api.RestApiClient;
 import mc.apps.movies.api.RestApiInterface;
+import mc.apps.movies.tools.Dialogs;
 import mc.apps.movies.tools.ListItemClickListener;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -54,9 +63,13 @@ import retrofit2.Response;
 
 public class MovieActivity extends AppCompatActivity {
     private static final String TAG = "retrofit";
-    TextView desc;
+    TextView desc, translationTarget;
+    String textToTranslate;
+
     Button btnCasting;
     Movie movie;
+    String moviesAPIKey;
+    RestApiInterface apiInterface;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,15 +86,24 @@ public class MovieActivity extends AppCompatActivity {
         subtitle.setText(movie.original_language+" | "+movie.release_date);
         desc.setText(movie.overview);
 
-        desc.setOnClickListener((v)->translate());
+        apiInterface = RestApiClient.getInstance();
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MovieActivity.this);
+        moviesAPIKey = sharedPreferences.getString("edt_pref_movies_apikey","");
+
+        desc.setOnClickListener((v)->translate(v));
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             desc.setJustificationMode(JUSTIFICATION_MODE_INTER_WORD);
         }
 
-        Picasso.get()
-                .load("https://image.tmdb.org/t/p/w500"+movie.poster_path)
-                .into(logo);
+        //Log.i(TAG, "image : https://image.tmdb.org/t/p/w500"+movie.poster_path);
+        if(movie.poster_path!=null)
+            Picasso.get()
+                    .load(RestApiInterface.IMAGES_URL+movie.poster_path)
+                    .into(logo);
+        else
+            logo.setImageResource(R.drawable.no_image);
 
         FirebaseApp.initializeApp(this);
 
@@ -90,20 +112,16 @@ public class MovieActivity extends AppCompatActivity {
         btnCasting = findViewById(R.id.btnCasting);
         btnCasting.setOnClickListener(v->GetMovieCasting());
     }
-
     private void GetMovieCasting() {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MovieActivity.this);
-        String moviesAPIKey = sharedPreferences.getString("edt_pref_movies_apikey","");
-        RestApiInterface apiInterface = RestApiClient.getInstance();
         Call<Credit> call = apiInterface.credits(movie.id, moviesAPIKey);
         call.enqueue(new Callback<Credit>() {
             @Override
             public void onResponse(Call<Credit> call, Response<Credit> response) {
                 Credit result = response.body();
                 if(result!=null) {
-                    Log.i(TAG, "***************************************");
-                    Log.i(TAG, "Response : " + result);
-                    Log.i(TAG, "***************************************");
+//                    Log.i(TAG, "***************************************");
+//                    Log.i(TAG, "Response : " + result);
+//                    Log.i(TAG, "***************************************");
                     adapter.reset();
 
                     List<Actor> actors = result.cast;
@@ -132,6 +150,78 @@ public class MovieActivity extends AppCompatActivity {
                 Log.e(TAG , t.getMessage());
             }
         });
+    }
+
+//    private void diag() {
+//
+//        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+//        View layoutView = getLayoutInflater().inflate(R.layout.filter_layout, null);
+//        dialogBuilder.setView(layoutView);
+//
+//        AlertDialog dialog = dialogBuilder.create();
+//        dialog.getWindow().setWindowAnimations(R.style.DialogAnimation);
+//        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.GREEN));
+//        dialog.setOnShowListener(dialogInterface -> (
+//                (AlertDialog)dialogInterface).getWindow().setWindowAnimations(R.style.DialogAnimation)
+//        );
+//        dialog.show();
+//    }
+
+    private void GetBiography(int casting_id) {
+
+        Call<Biography> call = apiInterface.actor(casting_id, moviesAPIKey);
+        call.enqueue(new Callback<Biography>() {
+            @Override
+            public void onResponse(Call<Biography> call, Response<Biography> response) {
+                Biography result = response.body();
+               if(result!=null) {
+                    openBiographyDialog(result);
+               }else{
+                    Toast.makeText(MovieActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
+               }
+            }
+            @Override
+            public void onFailure(Call<Biography> call, Throwable t) {
+                Log.e(TAG , t.getMessage());
+            }
+        });
+    }
+
+    private void openBiographyDialog(Biography bio) {
+        Dialogs.showCustomDialog(this,R.layout.biography_layout,"Biography","","",
+                null,   //(dialog, witch) -> applyFilyter(dialog),
+                dialogInterface -> setBiography(dialogInterface, bio)
+        );
+
+    }
+
+    private void setBiography(DialogInterface dialog, Biography bio) {
+        AlertDialog view = ((AlertDialog) dialog);
+        ImageView logo = view.findViewById(R.id.tvLogo);
+        TextView title = view.findViewById(R.id.tvTitle);
+        TextView subtitle = view.findViewById(R.id.tvSubTitle);
+        TextView biography = view.findViewById(R.id.tvDesc);
+
+        title.setText(bio.name);//+" "+bio.alsoKnownAs.stream().map(String::valueOf).collect(Collectors.joining(", ")));
+        subtitle.setText(bio.knownForDepartment+" | "+emptyIfNull(bio.placeOfBirth)+":"+emptyIfNull(bio.birthday)+(bio.deathday==null?"":" - ")+emptyIfNull(bio.deathday));
+        biography.setText(bio.biography);
+
+        biography.setOnClickListener((v)->translate(v));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            biography.setJustificationMode(JUSTIFICATION_MODE_INTER_WORD);
+        }
+
+        if(bio.profilePath!=null)
+            Picasso.get()
+                    .load(RestApiInterface.IMAGES_URL+bio.profilePath)
+                    .into(logo);
+        else
+            logo.setImageResource(R.drawable.no_image);
+
+    }
+
+    private Object emptyIfNull(Object txt) {
+        return txt==null?"":txt;
     }
 
     /**
@@ -218,7 +308,7 @@ public class MovieActivity extends AppCompatActivity {
     private void handleRecyclerview() {
         RecyclerView recyclerview = findViewById(R.id.listCasting);
         ListItemClickListener item_listener = (id) -> {
-            Toast.makeText(this, "You clicked item #"+id, Toast.LENGTH_SHORT).show();
+            GetBiography(adapter.items.get(id).id);
         };
 
         adapter = new MyCustomAdapter(item_listener);
@@ -233,14 +323,17 @@ public class MovieActivity extends AppCompatActivity {
     /**
      * Translation
      */
-    public void translate() {
-        translateTextToFrench(desc.getText().toString());
+    public void translate(View view) {
+        textToTranslate = ((TextView)view).getText().toString();
+        translationTarget = ((TextView)view);
+
+        translateTextToFrench();
     }
 
     public void translateText(FirebaseTranslator langTranslator) {
         //translate source text to english
-        langTranslator.translate(desc.getText().toString())
-                .addOnSuccessListener(translatedText -> desc.setText(translatedText))
+        langTranslator.translate(textToTranslate)
+                .addOnSuccessListener(translatedText -> translationTarget.setText(translatedText))
                 .addOnFailureListener(
                         e -> Toast.makeText(MovieActivity.this,
                                 "Problem in translating the text entered",
@@ -267,14 +360,11 @@ public class MovieActivity extends AppCompatActivity {
                 .build();
         langTranslator.downloadModelIfNeeded(conditions)
                 .addOnSuccessListener(
-                        new OnSuccessListener<Void>() {
-                            @Override
-                            public void onSuccess(Void v) {
-                                Log.d("translator", "downloaded lang  model");
-                                //after making sure language models are available
-                                //perform translation
-                                translateText(langTranslator);
-                            }
+                        v -> {
+                            Log.d("translator", "downloaded lang  model");
+                            //after making sure language models are available
+                            //perform translation
+                            translateText(langTranslator);
                         })
                 .addOnFailureListener(
                         e -> Toast.makeText(MovieActivity.this,
@@ -282,11 +372,11 @@ public class MovieActivity extends AppCompatActivity {
                                 Toast.LENGTH_LONG).show());
     }
 
-    public void translateTextToFrench(String text) {
+    public void translateTextToFrench() {
         //FirebaseApp.initializeApp(MovieActivity.this);
         //First identify the language of the entered text
         FirebaseLanguageIdentification languageIdentifier = FirebaseNaturalLanguage.getInstance().getLanguageIdentification();
-        languageIdentifier.identifyLanguage(text)
+        languageIdentifier.identifyLanguage(textToTranslate)
                 .addOnSuccessListener(
                         new OnSuccessListener<String>() {
                             @Override

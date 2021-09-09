@@ -32,6 +32,11 @@ public interface RestApiInterface {
     @GET("search/person")
     Call<Result3> actor(@Query("api_key") String api_key, @Query(value="query", encoded=false) String firstName_lastName);
 
+    @GET("person/{casting_id}")
+    Call<Biography> actor(@Path(value="casting_id", encoded=false) int casting_id, @Query("api_key") String api_key);
+
+    //500?api_key=5956cfe9afe78bdf9b9c1449c3b8baf5&language=en-US
+
     @GET("movie/{movie_id}/credits")
     Call<Credit> credits(@Path(value="movie_id", encoded=false) int movie_id, @Query("api_key") String api_key);
 
