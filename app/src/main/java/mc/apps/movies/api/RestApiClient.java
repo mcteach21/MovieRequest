@@ -13,7 +13,6 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RestApiClient {
     private static final String BASE_URL = "https://api.themoviedb.org/3/";
-    //private static final String IMAGES_URL="https://image.tmdb.org/t/p/w500/";
     private static final String TAG = "retrofit";
 
     public static String moviesAPIKey;

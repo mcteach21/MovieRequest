@@ -55,6 +55,8 @@ public interface RestApiInterface {
     // discover/movie?with_people=287,819&sort_by=vote_average.desc
     // discover/movie?primary_release_year=2010&sort_by=vote_average.desc
 
+    //movie/{movie_id}/images?api_key=xx
+
     /**
      * Tv Shows
      */
