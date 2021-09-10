@@ -8,23 +8,23 @@ public interface RestApiInterface {
     String IMAGES_URL="https://image.tmdb.org/t/p/w500";
 
     @GET("discover/movie")
-    Call<Result> list(@Query("api_key") String api_key, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> list(@Query("api_key") String api_key, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
 
     @GET("discover/movie")
-    Call<Result> byReleaseYear(@Query("api_key") String api_key, @Query("primary_release_year") int year, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byReleaseYear(@Query("api_key") String api_key, @Query("primary_release_year") int year, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
     @GET("discover/movie")
-    Call<Result> byGenre(@Query("api_key") String api_key, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byGenre(@Query("api_key") String api_key, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
 
 //    @GET("discover/movie")
 //    Call<Result> byCasting(@Query("api_key") String api_key, @Query("with_cast") int actor_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
 
     @GET("discover/movie")
-    Call<Result> byGenreAndYear(@Query("api_key") String api_key, @Query("primary_release_year") int year, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byGenreAndYear(@Query("api_key") String api_key, @Query("primary_release_year") int year, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
 
     @GET("search/movie")
-    Call<Result> byKeyword(@Query("api_key") String api_key , @Query("query") String keyword, @Query("include_adult") boolean adult, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byKeyword(@Query("api_key") String api_key , @Query("query") String keyword, @Query("include_adult") boolean adult, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
     @GET("search/movie")
-    Call<Result> byKeywordAndYear(@Query("api_key") String api_key , @Query("primary_release_year") int year, @Query("query") String keyword, @Query("include_adult") boolean adult, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byKeywordAndYear(@Query("api_key") String api_key , @Query("primary_release_year") int year, @Query("query") String keyword, @Query("include_adult") boolean adult, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
 
     @GET("genre/movie/list")
     Call<Result2> genres(@Query("api_key") String api_key);
@@ -41,16 +41,37 @@ public interface RestApiInterface {
     Call<Credit> credits(@Path(value="movie_id", encoded=false) int movie_id, @Query("api_key") String api_key);
 
     @GET("discover/movie")
-    Call<Result> byCastingAndGenreAndYear(@Query("api_key") String api_key, @Query("with_cast") int casting_id,  @Query("primary_release_year") int year, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byCastingAndGenreAndYear(@Query("api_key") String api_key, @Query("with_cast") int casting_id, @Query("primary_release_year") int year, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
     @GET("discover/movie")
-    Call<Result> byCastingAndGenre(@Query("api_key") String api_key, @Query("with_cast") int casting_id, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byCastingAndGenre(@Query("api_key") String api_key, @Query("with_cast") int casting_id, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
     @GET("discover/movie")
-    Call<Result> byCastingAndYear(@Query("api_key") String api_key, @Query("with_cast") int casting_id,  @Query("primary_release_year") int year, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byCastingAndYear(@Query("api_key") String api_key, @Query("with_cast") int casting_id, @Query("primary_release_year") int year, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
 
     @GET("discover/movie")
-    Call<Result> byCasting(@Query("api_key") String api_key, @Query("with_cast") int casting_id,  @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    Call<MovieResult> byCasting(@Query("api_key") String api_key, @Query("with_cast") int casting_id, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
 
     // exemples  : https://www.themoviedb.org/documentation/api/discover
     // discover/movie?with_people=287,819&sort_by=vote_average.desc
     // discover/movie?primary_release_year=2010&sort_by=vote_average.desc
+
+    /**
+     * Tv Shows
+     */
+    @GET("tv/popular")
+    Call<TvShowResult> tvPopular(@Query("api_key") String api_key, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    @GET("discover/tv")
+    Call<TvShowResult> tvByGenre(@Query("api_key") String api_key, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    @GET("discover/tv")
+    Call<TvShowResult> tvByYear(@Query("api_key") String api_key, @Query("first_air_date_year") int year, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    @GET("discover/tv")
+    Call<TvShowResult> tvByGenreAndYear(@Query("api_key") String api_key, @Query("first_air_date_year") int year, @Query("with_genres") int genre_id , @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+
+    @GET("search/tv")
+    Call<TvShowResult> tvByKeyword(@Query("api_key") String api_key , @Query("query") String keyword, @Query("include_adult") boolean adult, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+    @GET("search/tv")
+    Call<TvShowResult> tvByKeywordAndYear(@Query("api_key") String api_key , @Query("first_air_date_year") int year, @Query("query") String keyword, @Query("include_adult") boolean adult, @Query("page") int page, @Query("sort_by") String sort_by, @Query("with_original_language") String language);
+
+
+    @GET("tv/{tvshow_id}/credits")
+    Call<Credit> tvCredits(@Path(value="tvshow_id", encoded=false) int tvshow_id, @Query("api_key") String api_key);
 }

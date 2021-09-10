@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
 
-public class Movie implements Serializable {
+public class Movie extends Media implements Serializable {
     @SerializedName("id")
     public int id;
     @SerializedName("adult")
@@ -38,5 +38,27 @@ public class Movie implements Serializable {
     @Override
     public String toString() {
         return "[" + id + "] " + title +  " | " + release_date;
+    }
+
+    @Override
+    public int getId() {
+        return id;
+    }
+
+    @Override
+    public String getTitle() {
+        return title.equalsIgnoreCase(original_title)?title:title+" ["+original_title+"]";
+    }
+    @Override
+    public String getSubTitle() {
+        return original_language+" | "+release_date;
+    }
+    @Override
+    public String getOverview() {
+        return overview;
+    }
+    @Override
+    public String getLogoPath() {
+        return poster_path;
     }
 }

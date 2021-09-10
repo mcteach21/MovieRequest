@@ -37,12 +37,16 @@ import java.util.Calendar;
 import java.util.List;
 
 import mc.apps.movies.api.GenresManager;
+import mc.apps.movies.api.Media;
+import mc.apps.movies.api.MediaResult;
 import mc.apps.movies.api.Movie;
 import mc.apps.movies.api.Person;
 import mc.apps.movies.api.RestApiClient;
 import mc.apps.movies.api.RestApiInterface;
-import mc.apps.movies.api.Result;
+import mc.apps.movies.api.MovieResult;
 import mc.apps.movies.api.Result3;
+import mc.apps.movies.api.TvShow;
+import mc.apps.movies.api.TvShowResult;
 import mc.apps.movies.tools.Animate;
 import mc.apps.movies.tools.Dialogs;
 import mc.apps.movies.tools.ListItemClickListener;
@@ -57,7 +61,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "retrofit";
     private static final String MOVIES_SORT_BY = "primary_release_date.desc";
     private static final String MOVIES_ORIGINAL_LANGUAGE = "fr|en";
-    private MyCustomAdapter adapter;
+    private MediaCustomAdapter adapter;
+    private Button btnStart, btnStart2;
     private TextView txtInfo;
 
     RestApiInterface apiInterface;
@@ -66,9 +71,12 @@ public class MainActivity extends AppCompatActivity {
     SharedPreferences sharedPreferences;
     String moviesAPIKey;
 
-    private String[] lastCall= new String[5];
+    int year = thisYear;
+    int genre_id=0;
+    String keyword="", casting=""; boolean adult=false;
     Button btnPrev, btnNext;
     int currentPage=1, totalPages=0;
+    int currentSearch = 1; //movies | 2 : tv shows
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,9 +94,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         if(checkSettings()) {
             init();
-            if(lastCall[0]!=null)
-                //year,keyword, adult,genre_id, casting
-                MoviesApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage, Integer.parseInt(lastCall[3]), lastCall[4]);
+            MediaApiCall(currentSearch);
         }
 
     }
@@ -99,18 +105,17 @@ public class MainActivity extends AppCompatActivity {
         return !moviesAPIKey.isEmpty() && !firebaseAPIKey.isEmpty();
     }
     private void init() {
+        this.adult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
+
         TextView warning = findViewById(R.id.txtWarning);
         warning.setVisibility(View.GONE);
 
-        Button btnStart = findViewById(R.id.btnStartHttpClient);
-
-        Boolean allowAdult = sharedPreferences.getBoolean("swc_prefs_allow_adult", false);
-        btnStart.setOnClickListener(v->
-                        {   resetPaginate(); MoviesApiCall(thisYear,"", allowAdult, 1,0, "");}
-                ); //
+        btnStart = findViewById(R.id.btnStartHttpClient);
+        btnStart2 = findViewById(R.id.btnStartHttpClient2);
         btnStart.setEnabled(true);
-
-        handleRecyclerview();
+        btnStart2.setEnabled(true);
+        btnStart.setOnClickListener(v->{ InitPaginate(); MediaApiCall(1); });
+        btnStart2.setOnClickListener(v-> { InitPaginate(); MediaApiCall(2); });
 
         btnPrev = findViewById(R.id.btnPrev);
         btnNext = findViewById(R.id.btnNext);
@@ -119,20 +124,17 @@ public class MainActivity extends AppCompatActivity {
         btnNext.setOnClickListener(v->managePage(1));
         txtInfo = findViewById(R.id.txtInfo);
 
-
         ImageView filter = findViewById(R.id.imgFilter);
-        Animate.rotateView(filter,1500,true);
+        Animate.rotateView(filter,800,true);
         filter.setOnClickListener(v-> startFilterDialog());
-    }
 
+        handleRecyclerview();
+    }
     private void managePage(int i) {
         int num = currentPage+i;
         currentPage = (num>totalPages || num==0)?1:num;
-
-        //if(lastCall[0]!=null)
-        MoviesApiCall(Integer.parseInt(lastCall[0]) ,lastCall[1], Boolean.parseBoolean(lastCall[2]), currentPage, Integer.parseInt(lastCall[3]), lastCall[4]);
+        MediaApiCall(currentSearch);
     }
-
     private void startFilterDialog() {
         Dialogs.showCustomDialog(this,R.layout.filter_layout,"","Apply","",
                 (dialog, witch) -> applyFilyter(dialog),
@@ -175,72 +177,136 @@ public class MainActivity extends AppCompatActivity {
             year = Integer.parseInt(spinYear.getText().toString());
         }catch(Exception e){}
 
-        resetPaginate();
 
         String keyword=edtKeyword.getEditableText().toString();
         String casting=edtCasting.getEditableText().toString().trim().replace(" ","+");
 
-        MoviesApiCall(year, keyword, allowAdult, currentPage, genre, casting);
-    }
+        saveLastCall(year, keyword, allowAdult, genre, casting);
 
-    private void resetPaginate() {
+        InitPaginate();
+        MediaApiCall(currentSearch);
+    }
+    private void InitPaginate() {
         currentPage=1;
         totalPages=0;
         txtInfo.setText("");
     }
+    private void saveLastCall(int year, String keyword, boolean adult, int genre_id, String casting){
+        this.year=year; this.keyword=keyword; this.adult=adult; this.genre_id=genre_id; this.casting=casting;
+    }
 
-    private void MoviesApiCall(int year, String keyword, boolean adult, int page, int genre_id, String casting) {
-        saveLastCall(year,keyword, adult, genre_id, casting);
-        if(!"".equals(casting)){
-            Call<Result3> call0 = apiInterface.actor(moviesAPIKey, casting);
-            call0.enqueue(new Callback<Result3>() {
-                @Override
-                public void onResponse(Call<Result3> call0, Response<Result3> response) {
-                    Result3 result = response.body();
-                    if(result!=null) {
-                        List<Person> casting = result.results;
-                        int casting_id = !casting.isEmpty()?casting.get(0).id:0;
 
-                        Call<Result> call;
-                        if (genre_id > 0) {
-                            call = year == 0 ?
-                                    apiInterface.byCastingAndGenre(moviesAPIKey, casting_id, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
-                                    : apiInterface.byCastingAndGenreAndYear(moviesAPIKey, casting_id, year, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
-                        }else{
-                            call = year == 0 ?
-                                    apiInterface.byCasting(moviesAPIKey, casting_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
-                                    : apiInterface.byCastingAndYear(moviesAPIKey, casting_id, year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+    /**
+     * api call
+     */
+
+    private void MediaApiCall(int search) {
+        currentSearch=search;
+        int color1= getResources().getColor(R.color.white,null);
+        int color2= getResources().getColor(android.R.color.holo_orange_dark,null);
+        btnStart.setTextColor(search==1?color2:color1);
+        btnStart2.setTextColor(search==2?color2:color1);
+
+        Log.i(TAG, "MediaApiCall: currentSearch = "+currentSearch);
+
+        if(search==1) {
+            //Movies
+            if (!"".equals(casting)) {
+                Call<Result3> call0 = apiInterface.actor(moviesAPIKey, casting);
+                call0.enqueue(new Callback<Result3>() {
+                    @Override
+                    public void onResponse(Call<Result3> call0, Response<Result3> response) {
+                        Result3 result = response.body();
+                        if (result != null) {
+                            List<Person> casting = result.results;
+                            int casting_id = !casting.isEmpty() ? casting.get(0).id : 0;
+
+                            Call<MovieResult> call;
+                            if (genre_id > 0) {
+                                call = year == 0 ?
+                                        apiInterface.byCastingAndGenre(moviesAPIKey, casting_id, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                                        : apiInterface.byCastingAndGenreAndYear(moviesAPIKey, casting_id, year, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+                            } else {
+                                call = year == 0 ?
+                                        apiInterface.byCasting(moviesAPIKey, casting_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                                        : apiInterface.byCastingAndYear(moviesAPIKey, casting_id, year, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+                            }
+                            //  call = keyword.isEmpty() ? (year == 0 ? apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byReleaseYear(moviesAPIKey, year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)) :
+                            //  (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
+
+                            callMoviesApi(call);
+                        } else {
+                            Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
                         }
-                        //  call = keyword.isEmpty() ? (year == 0 ? apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byReleaseYear(moviesAPIKey, year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)) :
-                        //  (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
-
-                        callApi(call);
-                    }else{
-                        Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
                     }
-                }
 
-                @Override
-                public void onFailure(Call<Result3> call, Throwable t) {
-                    Log.e(TAG , "Error : "+t.getMessage());
-                }
-            });
-        }else {
-            Call<Result> call;
-            if (genre_id > 0)
-                call = year == 0 ? apiInterface.byGenre(moviesAPIKey, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byGenreAndYear(moviesAPIKey, year, genre_id, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
-            else
-                call = keyword.isEmpty() ? (year == 0 ? apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byReleaseYear(moviesAPIKey, year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)) :
-                        (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
-            callApi(call);
+                    @Override
+                    public void onFailure(Call<Result3> call, Throwable t) {
+                        Log.e(TAG, "Error : " + t.getMessage());
+                    }
+                });
+            } else {
+                Call<MovieResult> call;
+                if (genre_id > 0)
+                    call = year == 0 ? apiInterface.byGenre(moviesAPIKey, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byGenreAndYear(moviesAPIKey, year, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+                else
+                    call = keyword.isEmpty() ? (year == 0 ? apiInterface.list(moviesAPIKey, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byReleaseYear(moviesAPIKey, year, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)) :
+                            (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
+
+                callMoviesApi(call);
+            }
+        }else{
+            //TV Shows
+            Call<TvShowResult> call;
+            if (genre_id > 0) {
+                call = year == 0 ?
+                        apiInterface.tvByGenre(moviesAPIKey, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                        : apiInterface.tvByGenreAndYear(moviesAPIKey, year, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+            } else {
+                call = keyword.isEmpty() ? (year == 0 ? apiInterface.tvPopular(moviesAPIKey, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                        : apiInterface.tvByYear(moviesAPIKey, year, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE))
+                : (year == 0 ? apiInterface.tvByKeyword(moviesAPIKey, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) :
+                        apiInterface.tvByKeywordAndYear(moviesAPIKey, year, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
+            }
+            callTvShowsApi(call);
         }
     }
 
-    private void callApi(Call<Result> call) {
-        call.enqueue(new Callback<Result>() {
+    private void callTvShowsApi(Call<TvShowResult> call) {
+        call.enqueue(new Callback<TvShowResult>() {
             @Override
-            public void onResponse(Call<Result> call, Response<Result> response) {
-                Result result = response.body();
+            public void onResponse(Call<TvShowResult> call, Response<TvShowResult> response) {
+                TvShowResult result = response.body();
+                if (result != null) {
+                    currentPage = result.page;
+                    totalPages = result.totalPages;
+                    txtInfo.setText("page " + currentPage + " sur " + result.totalPages + " [" + result.totalResults + "]");
+
+                    adapter.reset();
+                    List<TvShow> tvshows = result.results;
+                    if (response.isSuccessful()) {
+                        tvshows.forEach(media -> adapter.add(media));
+                    } else {
+                        Log.i(TAG, String.valueOf(response.errorBody()));
+                    }
+                } else {
+                    Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
+                }
+                findViewById(R.id.infoLayout).setVisibility(result != null ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void onFailure(Call<TvShowResult> call, Throwable t) {
+                Log.e(TAG, t.getMessage());
+            }
+        });
+    }
+
+    private void callMoviesApi(Call<MovieResult> call) {
+        call.enqueue(new Callback<MovieResult>() {
+            @Override
+            public void onResponse(Call<MovieResult> call, Response<MovieResult> response) {
+                MovieResult result = response.body();
                 if (result != null) {
                     currentPage = result.page;
                     totalPages = result.pages;
@@ -260,18 +326,10 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<Result> call, Throwable t) {
-                Log.e(TAG, t.getMessage());
+            public void onFailure(Call<MovieResult> call, Throwable t) {
+                Log.e(TAG, "Error : "+t.getMessage());
             }
         });
-    }
-
-    private void saveLastCall(int year, String keyword, boolean adult, int genre_id, String casting){
-        lastCall[0]= String.valueOf(year);
-        lastCall[1]= keyword;
-        lastCall[2]= String.valueOf(adult);
-        lastCall[3]= String.valueOf(genre_id);
-        lastCall[4]= casting;
     }
 
     @Override
@@ -293,16 +351,14 @@ public class MainActivity extends AppCompatActivity {
     private void handleRecyclerview() {
         RecyclerView recyclerview = findViewById(R.id.list);
         ListItemClickListener item_listener = (id) -> {
-            //Toast.makeText(this, "You clicked item #"+id, Toast.LENGTH_SHORT).show();
+            Media media = adapter.items.get(id);
 
-            Movie movie = adapter.items.get(id);
-            Intent intent = new Intent(MainActivity.this, MovieActivity.class);
-            intent.putExtra("movie", movie);
-
+            Intent intent = new Intent(MainActivity.this, MediaActivity.class);
+            intent.putExtra("media", media);
             startActivity(intent);
         };
 
-        adapter = new MyCustomAdapter(item_listener);
+        adapter = new MediaCustomAdapter(item_listener);
         recyclerview.setAdapter(adapter);
         recyclerview.setLayoutManager(new LinearLayoutManager(this));
 
@@ -311,12 +367,94 @@ public class MainActivity extends AppCompatActivity {
         recyclerview.setLayoutAnimation(animation);
     }
 
-    private class MyCustomAdapter extends RecyclerView.Adapter<MyCustomAdapter.MyCustomViewHolder> {
+//    private class MoviesCustomAdapter extends RecyclerView.Adapter<MoviesCustomAdapter.MyCustomViewHolder> {
+//        private static final long FADE_DURATION = 2000;
+//        List<Movie> items = new ArrayList<Movie>();
+//
+//        private ListItemClickListener listener;
+//        public MoviesCustomAdapter(ListItemClickListener listener) {
+//            this.listener = listener;
+//        }
+//
+//        @NonNull
+//        @Override
+//        public MyCustomViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+//            View item_view =  LayoutInflater.from(parent.getContext()).inflate(R.layout.item_simple_layout, parent, false);
+//            return new MyCustomViewHolder(item_view);
+//        }
+//
+//        @Override
+//        public void onBindViewHolder(@NonNull MyCustomViewHolder holder, int position) {
+//            Movie movie = items.get(position);
+//
+//            holder.title.setText(movie.title.equalsIgnoreCase(movie.original_title)?movie.title:movie.title+" ["+movie.original_title+"]");
+//            holder.subtitle.setText(movie.original_language+" | "+movie.release_date);
+//            holder.desc.setText(movie.overview);
+//
+//            Log.i(TAG, movie.overview);
+//
+//            Picasso.get()
+//                    .load(RestApiInterface.IMAGES_URL+movie.poster_path)
+//                    .into(holder.logo);
+//
+//            setFadeAnimation(holder.itemView);
+//            setScaleAnimation(holder.itemView);
+//        }
+//
+//        /**
+//         * Animtions
+//         * @return
+//         */
+//        private void setFadeAnimation(View view) {
+//            AlphaAnimation anim = new AlphaAnimation(0.0f, 1.0f);
+//            anim.setDuration(FADE_DURATION);
+//            view.startAnimation(anim);
+//        }
+//        private void setScaleAnimation(View view) {
+//            ScaleAnimation anim = new ScaleAnimation(0.0f, 1.0f, 0.0f, 1.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+//            anim.setDuration(FADE_DURATION/2);
+//            view.startAnimation(anim);
+//        }
+//
+//        @Override
+//        public int getItemCount() {
+//            return items.size();
+//        }
+//
+//        public void reset() {
+//            this.items.clear();
+//            notifyDataSetChanged();
+//        }
+//
+//        public void add(Movie movie) {
+//            this.items.add(movie);
+//            notifyDataSetChanged();
+//        }
+//
+//        class MyCustomViewHolder extends RecyclerView.ViewHolder {
+//            TextView title, subtitle, desc;
+//            ImageView logo;
+//            public MyCustomViewHolder(@NonNull View itemView) {
+//                super(itemView);
+//                title = itemView.findViewById(R.id.tvTitle);
+//                subtitle = itemView.findViewById(R.id.tvSubTitle);
+//                desc = itemView.findViewById(R.id.tvDesc);
+//                logo = itemView.findViewById(R.id.tvLogo);
+//
+//                itemView.setOnClickListener(v->listener.onClick(getAdapterPosition()));
+//            }
+//        }
+//    }
+
+    /**
+     * Media (Movie+TvShow) Adapter
+     */
+    private class MediaCustomAdapter extends RecyclerView.Adapter<MediaCustomAdapter.MyCustomViewHolder> {
         private static final long FADE_DURATION = 2000;
-        List<Movie> items = new ArrayList<Movie>();
+        List<Media> items = new ArrayList<>();
 
         private ListItemClickListener listener;
-        public MyCustomAdapter(ListItemClickListener listener) {
+        public MediaCustomAdapter(ListItemClickListener listener) {
             this.listener = listener;
         }
 
@@ -329,18 +467,14 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(@NonNull MyCustomViewHolder holder, int position) {
-            Movie movie = items.get(position);
+            Media media = items.get(position);
 
-            holder.title.setText(movie.title.equalsIgnoreCase(movie.original_title)?movie.title:movie.title+" ["+movie.original_title+"]");
-            holder.subtitle.setText(movie.original_language+" | "+movie.release_date);
-            holder.desc.setText(movie.overview);
-
-            Log.i(TAG, movie.overview);
+            holder.title.setText(media.getTitle());
+            holder.subtitle.setText(media.getSubTitle());
+            holder.desc.setText(media.getOverview());
 
             Picasso.get()
-                    .load(RestApiInterface.IMAGES_URL+movie.poster_path)
-//                    .resize(80, 80)
-//                    .centerCrop()
+                    .load(RestApiInterface.IMAGES_URL+media.getLogoPath())
                     .into(holder.logo);
 
             setFadeAnimation(holder.itemView);
@@ -372,8 +506,8 @@ public class MainActivity extends AppCompatActivity {
             notifyDataSetChanged();
         }
 
-        public void add(Movie movie) {
-            this.items.add(movie);
+        public void add(Media media) {
+            this.items.add(media);
             notifyDataSetChanged();
         }
 

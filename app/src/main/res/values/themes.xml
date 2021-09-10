@@ -30,10 +30,10 @@
     <style name="AlertDialogTheme" parent="Theme.AppCompat.DayNight.Dialog.Alert">
         <item name="colorAccent">@color/dialogButtonText</item>
 
-        <!-- Additionally if you want animations when dialog opening
-        <item name="android:windowEnterAnimation">@anim/slide_up</item>
+        <!-- Additionally if you want animations when dialog opening-->
+        <item name="android:windowEnterAnimation">@anim/item_animation_fall_down</item>
         <item name="android:windowExitAnimation">@anim/slide_down</item>
-        -->
+
     </style>
 
 

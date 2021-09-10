@@ -1,40 +1,16 @@
 <resources>
     <string name="app_name">MovieRequest</string>
 
-    <string name="btn_http_client_text">TheMovieDB (Rest API)</string>
-    <string name="app_title">(Retrofit) Api Rest Client</string>
+    <string name="app_title">TheMovieDB (API)</string>
+    <string name="btn_http_client_text">Movies</string>
+    <string name="btn_http_client2_text">Tv Shows</string>
+
     <string name="search_filter_txt"><![CDATA[Search & Filter..]]></string>
 
-    <!--    <string name="first_fragment_label">First Fragment</string>-->
-    <!--    <string name="second_fragment_label">Second Fragment</string>-->
-    <!--    <string name="next">Next</string>-->
-    <!--    <string name="previous">Previous</string>-->
-
-    <!--    <string name="hello_first_fragment">Hello first fragment</string>-->
-    <!--    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>-->
-
-    <integer-array name="years">
-        <item>2021</item>
-        <item>2020</item>
-        <item>2019</item>
-        <item>2018</item>
-    </integer-array>
-    <string name="title_activity_settings">SettingsActivity</string>
-
-    <!-- Preference Titles -->
+    <string name="title_activity_settings">Settings</string>
     <string name="messages_header">Messages</string>
     <string name="sync_header">Sync</string>
 
-    <!-- Messages Preferences -->
-    <string name="signature_title">Your signature</string>
-    <string name="reply_title">Default reply action</string>
-
-    <!-- Sync Preferences -->
-    <string name="sync_title">Sync email periodically</string>
-    <string name="attachment_title">Download incoming attachments</string>
-    <string name="attachment_summary_on">Automatically download attachments for incoming emails
-    </string>
-    <string name="attachment_summary_off">Only download attachments when manually requested</string>
     <string name="preferences_category_1_txt">API Keys</string>
     <string name="preferences_category_2_txt">Options</string>
     <string name="preferences_allow_adult_txt">Allow Adult Results</string>

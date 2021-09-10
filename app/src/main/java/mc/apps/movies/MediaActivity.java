@@ -6,16 +6,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.AppCompatAutoCompleteTextView;
 import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -45,13 +41,13 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import mc.apps.movies.api.Actor;
 import mc.apps.movies.api.Biography;
 import mc.apps.movies.api.Casting;
 import mc.apps.movies.api.Credit;
 import mc.apps.movies.api.Crew;
+import mc.apps.movies.api.Media;
 import mc.apps.movies.api.Movie;
 import mc.apps.movies.api.RestApiClient;
 import mc.apps.movies.api.RestApiInterface;
@@ -61,13 +57,13 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class MovieActivity extends AppCompatActivity {
+public class MediaActivity extends AppCompatActivity {
     private static final String TAG = "retrofit";
     TextView desc, translationTarget;
     String textToTranslate;
 
     Button btnCasting;
-    Movie movie;
+    Media media;
     String moviesAPIKey;
     RestApiInterface apiInterface;
 
@@ -76,19 +72,19 @@ public class MovieActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_movie);
 
-        movie = (Movie) getIntent().getSerializableExtra("movie");
+        media = (Media) getIntent().getSerializableExtra("media");
         ImageView logo = findViewById(R.id.tvLogo);
         TextView title = findViewById(R.id.tvTitle);
         TextView subtitle = findViewById(R.id.tvSubTitle);
         desc = findViewById(R.id.tvDesc);
 
-        title.setText(movie.title.equalsIgnoreCase(movie.original_title)?movie.title:movie.title+" ["+movie.original_title+"]");
-        subtitle.setText(movie.original_language+" | "+movie.release_date);
-        desc.setText(movie.overview);
+        title.setText(media.getTitle());
+        subtitle.setText(media.getSubTitle());
+        desc.setText(media.getOverview());
 
         apiInterface = RestApiClient.getInstance();
 
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MovieActivity.this);
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MediaActivity.this);
         moviesAPIKey = sharedPreferences.getString("edt_pref_movies_apikey","");
 
         desc.setOnClickListener((v)->translate(v));
@@ -98,9 +94,9 @@ public class MovieActivity extends AppCompatActivity {
         }
 
         //Log.i(TAG, "image : https://image.tmdb.org/t/p/w500"+movie.poster_path);
-        if(movie.poster_path!=null)
+        if(media.getLogoPath()!=null)
             Picasso.get()
-                    .load(RestApiInterface.IMAGES_URL+movie.poster_path)
+                    .load(RestApiInterface.IMAGES_URL+media.getLogoPath())
                     .into(logo);
         else
             logo.setImageResource(R.drawable.no_image);
@@ -113,15 +109,13 @@ public class MovieActivity extends AppCompatActivity {
         btnCasting.setOnClickListener(v->GetMovieCasting());
     }
     private void GetMovieCasting() {
-        Call<Credit> call = apiInterface.credits(movie.id, moviesAPIKey);
+        Call<Credit> call = (media instanceof Movie)?apiInterface.credits(media.getId(), moviesAPIKey):
+                apiInterface.tvCredits(media.getId(), moviesAPIKey);
         call.enqueue(new Callback<Credit>() {
             @Override
             public void onResponse(Call<Credit> call, Response<Credit> response) {
                 Credit result = response.body();
                 if(result!=null) {
-//                    Log.i(TAG, "***************************************");
-//                    Log.i(TAG, "Response : " + result);
-//                    Log.i(TAG, "***************************************");
                     adapter.reset();
 
                     List<Actor> actors = result.cast;
@@ -142,7 +136,7 @@ public class MovieActivity extends AppCompatActivity {
                         Log.i(TAG, String.valueOf(response.errorBody()));
                     }
                 }else{
-                    Toast.makeText(MovieActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MediaActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
                 }
             }
             @Override
@@ -177,7 +171,7 @@ public class MovieActivity extends AppCompatActivity {
                if(result!=null) {
                     openBiographyDialog(result);
                }else{
-                    Toast.makeText(MovieActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MediaActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
                }
             }
             @Override
@@ -335,7 +329,7 @@ public class MovieActivity extends AppCompatActivity {
         langTranslator.translate(textToTranslate)
                 .addOnSuccessListener(translatedText -> translationTarget.setText(translatedText))
                 .addOnFailureListener(
-                        e -> Toast.makeText(MovieActivity.this,
+                        e -> Toast.makeText(MediaActivity.this,
                                 "Problem in translating the text entered",
                                 Toast.LENGTH_LONG).show()
                 );
@@ -367,7 +361,7 @@ public class MovieActivity extends AppCompatActivity {
                             translateText(langTranslator);
                         })
                 .addOnFailureListener(
-                        e -> Toast.makeText(MovieActivity.this,
+                        e -> Toast.makeText(MediaActivity.this,
                                 "Problem in translating the text entered",
                                 Toast.LENGTH_LONG).show());
     }
@@ -387,7 +381,7 @@ public class MovieActivity extends AppCompatActivity {
                                     // and translate the entered text into english
                                     downloadTranslatorAndTranslate(languageCode);
                                 } else {
-                                    Toast.makeText(MovieActivity.this,
+                                    Toast.makeText(MediaActivity.this,
                                             "Could not identify language of the text entered",
                                             Toast.LENGTH_LONG).show();
                                 }
@@ -397,7 +391,7 @@ public class MovieActivity extends AppCompatActivity {
                         new OnFailureListener() {
                             @Override
                             public void onFailure(@NonNull Exception e) {
-                                Toast.makeText(MovieActivity.this,
+                                Toast.makeText(MediaActivity.this,
                                         "Problem in identifying language of the text entered",
                                         Toast.LENGTH_LONG).show();
                             }
