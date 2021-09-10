@@ -39,14 +39,10 @@ import java.util.List;
 import mc.apps.movies.api.GenresManager;
 import mc.apps.movies.api.Media;
 import mc.apps.movies.api.MediaResult;
-import mc.apps.movies.api.Movie;
 import mc.apps.movies.api.Person;
 import mc.apps.movies.api.RestApiClient;
 import mc.apps.movies.api.RestApiInterface;
-import mc.apps.movies.api.MovieResult;
 import mc.apps.movies.api.Result3;
-import mc.apps.movies.api.TvShow;
-import mc.apps.movies.api.TvShowResult;
 import mc.apps.movies.tools.Animate;
 import mc.apps.movies.tools.Dialogs;
 import mc.apps.movies.tools.ListItemClickListener;
@@ -60,6 +56,7 @@ import androidx.appcompat.app.AlertDialog;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "retrofit";
     private static final String MOVIES_SORT_BY = "primary_release_date.desc";
+    private static final String TVSHOWS_SORT_BY = "popularity.desc";
     private static final String MOVIES_ORIGINAL_LANGUAGE = "fr|en";
     private MediaCustomAdapter adapter;
     private Button btnStart, btnStart2;
@@ -88,12 +85,51 @@ public class MainActivity extends AppCompatActivity {
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
         apiInterface = RestApiClient.getInstance();
+
     }
+
+    private void test() {
+        Call<MediaResult> call = apiInterface.multi1(moviesAPIKey, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+        call.enqueue(new Callback<MediaResult>() {
+            @Override
+            public void onResponse(Call<MediaResult> call, Response<MediaResult> response) {
+                MediaResult result = response.body();
+                Log.i(TAG, "=========================================");
+                Log.i(TAG, "Movies : "+result);
+                Log.i(TAG, "=========================================");
+            }
+
+            @Override
+            public void onFailure(Call<MediaResult> call, Throwable t) {
+                Log.e(TAG, "Error : "+t.getMessage());
+            }
+        });
+
+        call = apiInterface.multi2(moviesAPIKey, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+        call.enqueue(new Callback<MediaResult>() {
+            @Override
+            public void onResponse(Call<MediaResult> call, Response<MediaResult> response) {
+                MediaResult result = response.body();
+                Log.i(TAG, "=========================================");
+                Log.i(TAG, "Tv Shows : "+result);
+                Log.i(TAG, "=========================================");
+            }
+
+            @Override
+            public void onFailure(Call<MediaResult> call, Throwable t) {
+                Log.e(TAG, "Error : "+t.getMessage());
+            }
+        });
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         if(checkSettings()) {
             init();
+
+            test();
+
             MediaApiCall(currentSearch);
         }
 
@@ -199,7 +235,6 @@ public class MainActivity extends AppCompatActivity {
     /**
      * api call
      */
-
     private void MediaApiCall(int search) {
         currentSearch=search;
         int color1= getResources().getColor(R.color.white,null);
@@ -221,20 +256,22 @@ public class MainActivity extends AppCompatActivity {
                             List<Person> casting = result.results;
                             int casting_id = !casting.isEmpty() ? casting.get(0).id : 0;
 
-                            Call<MovieResult> call;
+                            Call<MediaResult> call;
                             if (genre_id > 0) {
                                 call = year == 0 ?
                                         apiInterface.byCastingAndGenre(moviesAPIKey, casting_id, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
                                         : apiInterface.byCastingAndGenreAndYear(moviesAPIKey, casting_id, year, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
                             } else {
-                                call = year == 0 ?
+                                call = keyword.isEmpty() ? (year == 0 ?
                                         apiInterface.byCasting(moviesAPIKey, casting_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
-                                        : apiInterface.byCastingAndYear(moviesAPIKey, casting_id, year, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+                                        : apiInterface.byCastingAndYear(moviesAPIKey, casting_id, year, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE))
+                                : (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                                        : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
                             }
                             //  call = keyword.isEmpty() ? (year == 0 ? apiInterface.list(moviesAPIKey, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byReleaseYear(moviesAPIKey, year, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)) :
                             //  (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, page, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
 
-                            callMoviesApi(call);
+                            callMediaApi(call);
                         } else {
                             Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
                         }
@@ -246,46 +283,46 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
             } else {
-                Call<MovieResult> call;
+                Call<MediaResult> call;
                 if (genre_id > 0)
                     call = year == 0 ? apiInterface.byGenre(moviesAPIKey, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byGenreAndYear(moviesAPIKey, year, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
                 else
                     call = keyword.isEmpty() ? (year == 0 ? apiInterface.list(moviesAPIKey, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byReleaseYear(moviesAPIKey, year, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)) :
                             (year == 0 ? apiInterface.byKeyword(moviesAPIKey, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) : apiInterface.byKeywordAndYear(moviesAPIKey, year, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
 
-                callMoviesApi(call);
+                callMediaApi(call);
             }
         }else{
             //TV Shows
-            Call<TvShowResult> call;
+            Call<MediaResult> call;
             if (genre_id > 0) {
                 call = year == 0 ?
-                        apiInterface.tvByGenre(moviesAPIKey, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
-                        : apiInterface.tvByGenreAndYear(moviesAPIKey, year, genre_id, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
+                        apiInterface.tvByGenre(moviesAPIKey, genre_id, currentPage, TVSHOWS_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                        : apiInterface.tvByGenreAndYear(moviesAPIKey, year, genre_id, currentPage, TVSHOWS_SORT_BY, MOVIES_ORIGINAL_LANGUAGE);
             } else {
-                call = keyword.isEmpty() ? (year == 0 ? apiInterface.tvPopular(moviesAPIKey, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
-                        : apiInterface.tvByYear(moviesAPIKey, year, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE))
-                : (year == 0 ? apiInterface.tvByKeyword(moviesAPIKey, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) :
-                        apiInterface.tvByKeywordAndYear(moviesAPIKey, year, keyword, adult, currentPage, MOVIES_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
+                call = keyword.isEmpty() ? (year == 0 ? apiInterface.tvPopular(moviesAPIKey, currentPage, TVSHOWS_SORT_BY, MOVIES_ORIGINAL_LANGUAGE)
+                        : apiInterface.tvByYear(moviesAPIKey, year, currentPage, TVSHOWS_SORT_BY, MOVIES_ORIGINAL_LANGUAGE))
+                : (year == 0 ? apiInterface.tvByKeyword(moviesAPIKey, keyword, adult, currentPage, TVSHOWS_SORT_BY, MOVIES_ORIGINAL_LANGUAGE) :
+                        apiInterface.tvByKeywordAndYear(moviesAPIKey, year, keyword, adult, currentPage, TVSHOWS_SORT_BY, MOVIES_ORIGINAL_LANGUAGE));
             }
-            callTvShowsApi(call);
+            callMediaApi(call);
         }
     }
 
-    private void callTvShowsApi(Call<TvShowResult> call) {
-        call.enqueue(new Callback<TvShowResult>() {
+    private void callMediaApi(Call<MediaResult> call) {
+        call.enqueue(new Callback<MediaResult>() {
             @Override
-            public void onResponse(Call<TvShowResult> call, Response<TvShowResult> response) {
-                TvShowResult result = response.body();
+            public void onResponse(Call<MediaResult> call, Response<MediaResult> response) {
+                MediaResult result = response.body();
                 if (result != null) {
                     currentPage = result.page;
                     totalPages = result.totalPages;
                     txtInfo.setText("page " + currentPage + " sur " + result.totalPages + " [" + result.totalResults + "]");
 
                     adapter.reset();
-                    List<TvShow> tvshows = result.results;
+                    List<Media> medias = result.medias;
                     if (response.isSuccessful()) {
-                        tvshows.forEach(media -> adapter.add(media));
+                        medias.forEach(media -> adapter.add(media));
                     } else {
                         Log.i(TAG, String.valueOf(response.errorBody()));
                     }
@@ -296,37 +333,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<TvShowResult> call, Throwable t) {
-                Log.e(TAG, t.getMessage());
-            }
-        });
-    }
-
-    private void callMoviesApi(Call<MovieResult> call) {
-        call.enqueue(new Callback<MovieResult>() {
-            @Override
-            public void onResponse(Call<MovieResult> call, Response<MovieResult> response) {
-                MovieResult result = response.body();
-                if (result != null) {
-                    currentPage = result.page;
-                    totalPages = result.pages;
-                    txtInfo.setText("page " + currentPage + " sur " + result.pages + " [" + result.total + "]");
-
-                    adapter.reset();
-                    List<Movie> movies = result.movies;
-                    if (response.isSuccessful()) {
-                        movies.forEach(movie -> adapter.add(movie));
-                    } else {
-                        Log.i(TAG, String.valueOf(response.errorBody()));
-                    }
-                } else {
-                    Toast.makeText(MainActivity.this, "No Result!", Toast.LENGTH_SHORT).show();
-                }
-                findViewById(R.id.infoLayout).setVisibility(result != null ? View.VISIBLE : View.GONE);
-            }
-
-            @Override
-            public void onFailure(Call<MovieResult> call, Throwable t) {
+            public void onFailure(Call<MediaResult> call, Throwable t) {
                 Log.e(TAG, "Error : "+t.getMessage());
             }
         });
@@ -471,10 +478,10 @@ public class MainActivity extends AppCompatActivity {
 
             holder.title.setText(media.getTitle());
             holder.subtitle.setText(media.getSubTitle());
-            holder.desc.setText(media.getOverview());
+            holder.desc.setText(media.overview);
 
             Picasso.get()
-                    .load(RestApiInterface.IMAGES_URL+media.getLogoPath())
+                    .load(RestApiInterface.IMAGES_URL+media.backdropPath)
                     .into(holder.logo);
 
             setFadeAnimation(holder.itemView);

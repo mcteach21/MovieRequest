@@ -3,8 +3,6 @@ package mc.apps.movies.api;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-import java.util.List;
-
 public class Person {
     @SerializedName("adult")
     @Expose
@@ -15,9 +13,6 @@ public class Person {
     @SerializedName("id")
     @Expose
     public Integer id;
-//    @SerializedName("known_for")
-//    @Expose
-//    public List<KnownFor> knownFor;
     @SerializedName("known_for_department")
     @Expose
     public String knownForDepartment;

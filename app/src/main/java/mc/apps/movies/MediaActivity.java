@@ -48,7 +48,6 @@ import mc.apps.movies.api.Casting;
 import mc.apps.movies.api.Credit;
 import mc.apps.movies.api.Crew;
 import mc.apps.movies.api.Media;
-import mc.apps.movies.api.Movie;
 import mc.apps.movies.api.RestApiClient;
 import mc.apps.movies.api.RestApiInterface;
 import mc.apps.movies.tools.Dialogs;
@@ -80,7 +79,7 @@ public class MediaActivity extends AppCompatActivity {
 
         title.setText(media.getTitle());
         subtitle.setText(media.getSubTitle());
-        desc.setText(media.getOverview());
+        desc.setText(media.overview);
 
         apiInterface = RestApiClient.getInstance();
 
@@ -94,9 +93,9 @@ public class MediaActivity extends AppCompatActivity {
         }
 
         //Log.i(TAG, "image : https://image.tmdb.org/t/p/w500"+movie.poster_path);
-        if(media.getLogoPath()!=null)
+        if(media.backdropPath!=null)
             Picasso.get()
-                    .load(RestApiInterface.IMAGES_URL+media.getLogoPath())
+                    .load(RestApiInterface.IMAGES_URL+media.backdropPath)
                     .into(logo);
         else
             logo.setImageResource(R.drawable.no_image);
@@ -109,8 +108,8 @@ public class MediaActivity extends AppCompatActivity {
         btnCasting.setOnClickListener(v->GetMovieCasting());
     }
     private void GetMovieCasting() {
-        Call<Credit> call = (media instanceof Movie)?apiInterface.credits(media.getId(), moviesAPIKey):
-                apiInterface.tvCredits(media.getId(), moviesAPIKey);
+        Call<Credit> call = (media.releaseDate!=null)?apiInterface.credits(media.id, moviesAPIKey):
+                apiInterface.tvCredits(media.id, moviesAPIKey);
         call.enqueue(new Callback<Credit>() {
             @Override
             public void onResponse(Call<Credit> call, Response<Credit> response) {
@@ -145,21 +144,6 @@ public class MediaActivity extends AppCompatActivity {
             }
         });
     }
-
-//    private void diag() {
-//
-//        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
-//        View layoutView = getLayoutInflater().inflate(R.layout.filter_layout, null);
-//        dialogBuilder.setView(layoutView);
-//
-//        AlertDialog dialog = dialogBuilder.create();
-//        dialog.getWindow().setWindowAnimations(R.style.DialogAnimation);
-//        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.GREEN));
-//        dialog.setOnShowListener(dialogInterface -> (
-//                (AlertDialog)dialogInterface).getWindow().setWindowAnimations(R.style.DialogAnimation)
-//        );
-//        dialog.show();
-//    }
 
     private void GetBiography(int casting_id) {
 
